@@ -620,6 +620,7 @@ module Authorization
       contr.authorization_engine.permit!(privilege, 
                                          :user => contr.send(:current_user),
                                          :object => object,
+                                         :params => OpenStruct.new(contr.params),
                                          :skip_attribute_test => !@attribute_check,
                                          :context => @context || contr.class.decl_auth_context)
     end

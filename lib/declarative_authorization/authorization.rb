@@ -166,25 +166,25 @@ module Authorization
       if Authorization.is_a_association_proxy?(options[:object]) && options[:object].respond_to?(:new)
         options[:object] = (Rails.version < "3.0" ? options[:object] : options[:object].scoped).new
       end
-      
+
       options[:context] ||= options[:object] && (
         options[:object].class.respond_to?(:decl_auth_context) ?
             options[:object].class.decl_auth_context :
             options[:object].class.name.tableize.to_sym
       ) rescue NoMethodError
-      
+
       user, roles, privileges = user_roles_privleges_from_options(privilege, options)
 
       return true if roles.is_a?(Array) and not (roles & omnipotent_roles).empty?
 
-      # find a authorization rule that matches for at least one of the roles and 
+      # find a authorization rule that matches for at least one of the roles and
       # at least one of the given privileges
       attr_validator = AttributeValidator.new(self, user, options[:object], privilege, options[:context])
       rules = matching_auth_rules(roles, privileges, options[:context])
-      
+
       # Test each rule in turn to see whether any one of them is satisfied.
       rules.each do |rule|
-        return true if rule.validate?(attr_validator, options[:skip_attribute_test])
+        return true if rule.validate?(attr_validator, options[:skip_attribute_test], options[:params])
       end
 
       if options[:bang]
@@ -446,11 +446,12 @@ module Authorization
         not (@privileges & privs).empty?
     end
 
-    def validate? (attr_validator, skip_attribute = false)
+    def validate? (attr_validator, skip_attribute = false, params = nil)
       skip_attribute or @attributes.empty? or
         @attributes.send(@join_operator == :and ? :all? : :any?) do |attr|
           begin
-            attr.validate?(attr_validator)
+            object = attr.is_a?(ParamAttribute) ? params : nil
+            attr.validate?(attr_validator, object)
           rescue NilAttributeValueError => e
             nil # Bumping up against a nil attribute value flunks the rule.
           end
@@ -645,6 +646,12 @@ module Authorization
                     end
         memo
       end
+    end
+  end
+
+  class ParamAttribute < Attribute
+    def validate? (attr_validator, object = nil, hash = nil)
+      super(attr_validator, object, hash)
     end
   end
 

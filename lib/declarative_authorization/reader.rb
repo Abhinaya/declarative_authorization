@@ -400,6 +400,12 @@ module Authorization
         @current_rule.append_attribute Attribute.new(attr_conditions_hash)
       end
 
+      def if_params (attr_conditions_hash) #nodoc
+        raise DSLError, "if_attribute only in has_permission blocks" if @current_rule.nil?
+        parse_attribute_conditions_hash!(attr_conditions_hash)
+        @current_rule.append_attribute ParamAttribute.new(attr_conditions_hash)
+      end
+
       # if_permitted_to allows the has_permission_on block to depend on
       # permissions on associated objects.  By using it, the authorization
       # rules may be a lot DRYer.  E.g.:
